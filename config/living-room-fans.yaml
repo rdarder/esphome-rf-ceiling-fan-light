@@ -1,0 +1,47 @@
+# fan-controller.yaml
+esphome:
+  name: fan-controller
+  includes:
+      - ceiling_fan.h
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG 
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: darder
+  password: "0142815800"
+  ap:
+    ssid: "Fan Controller Fallback"
+
+captive_portal:
+
+remote_transmitter:
+  id: rf_transmitter
+  pin: GPIO10
+  carrier_duty_percent: 100%
+
+packages:
+  living_room_package:
+    !include
+    file: ceiling_fan_blueprint.yaml
+    vars:
+      room_name: "living_room"
+      radio_id: "0xC6C9"
+      
+  # Adding more fans in the future is now a copy-paste breeze:
+  # bedroom_package:
+  #   !include
+  #   file: ceiling_fan_blueprint.yaml
+  #   vars:
+  #     room_name: "bedroom"
+  #     radio_id: "0xABCD"

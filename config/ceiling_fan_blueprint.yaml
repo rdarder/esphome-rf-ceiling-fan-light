@@ -1,0 +1,62 @@
+# ceiling_fan_blueprint.yaml
+substitutions:
+  room_name: "default_fan"
+  radio_id: "0x0000"
+
+esphome:
+  on_boot:
+    - priority: 800.0
+      then:
+        - lambda: |-
+            static auto fan_instance = new esphome::CeilingFanDevice(${radio_id}, id(rf_transmitter));
+            id(global_hub_${room_name}) = fan_instance;
+
+globals:
+  - id: global_hub_${room_name}
+    type: void*
+    initial_value: 'nullptr'
+
+fan:
+  - platform: template
+    name: "${room_name} Fan"
+    id: fan_entity_${room_name}
+    speed_count: 6
+    on_speed_set:
+      lambda: |-
+        if (id(global_hub_${room_name}) != nullptr) {
+          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
+          int target_speed = id(fan_entity_${room_name}).speed;
+          
+          if (target_speed == 0) {
+            hub->transmit_cmd(esphome::FanCmd::FAN_OFF);
+          } else {
+            esphome::FanCmd speed_cmds[] = {
+              esphome::FanCmd::FAN_SPEED_1, esphome::FanCmd::FAN_SPEED_2, esphome::FanCmd::FAN_SPEED_3, 
+              esphome::FanCmd::FAN_SPEED_4, esphome::FanCmd::FAN_SPEED_5, esphome::FanCmd::FAN_SPEED_6
+            };
+            hub->transmit_cmd(speed_cmds[target_speed - 1]);
+          }
+        }
+    on_turn_off:
+      lambda: |-
+        if (id(global_hub_${room_name}) != nullptr) {
+          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
+          hub->transmit_cmd(esphome::FanCmd::FAN_OFF);
+        }
+
+switch:
+  - platform: template
+    name: "${room_name} Light Toggle"
+    id: light_entity_${room_name}
+    turn_on_action:
+      lambda: |-
+        if (id(global_hub_${room_name}) != nullptr) {
+          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
+          hub->transmit_cmd(esphome::FanCmd::LIGHT_TOGGLE);
+        }
+    turn_off_action:
+      lambda: |-
+        if (id(global_hub_${room_name}) != nullptr) {
+          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
+          hub->transmit_cmd(esphome::FanCmd::LIGHT_TOGGLE);
+        }
