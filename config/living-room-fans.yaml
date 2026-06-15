@@ -1,8 +1,6 @@
-# fan-controller.yaml
+# living-room-fans.yaml
 esphome:
   name: fan-controller
-  includes:
-      - ceiling_fan.h
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -29,19 +27,20 @@ remote_transmitter:
   id: rf_transmitter
   pin: GPIO10
   carrier_duty_percent: 100%
+  non_blocking: true
 
 packages:
-  living_room_package:
+  living_fan:
     !include
     file: ceiling_fan_blueprint.yaml
     vars:
       room_name: "living_room"
+      room_friendly_name: "Living Room"
       radio_id: "0xC6C9"
-      
-  # Adding more fans in the future is now a copy-paste breeze:
-  # bedroom_package:
-  #   !include
-  #   file: ceiling_fan_blueprint.yaml
-  #   vars:
-  #     room_name: "bedroom"
-  #     radio_id: "0xABCD"
+  comedor_fan:
+    !include
+    file: ceiling_fan_blueprint.yaml
+    vars:
+      room_name: "bedroom"
+      room_friendly_name: "Bedroom"
+      radio_id: "0x36A7"

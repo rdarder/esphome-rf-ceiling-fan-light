@@ -1,62 +1,88 @@
 # ceiling_fan_blueprint.yaml
 substitutions:
   room_name: "default_fan"
+  room_friendly_name: "Default Fan"
   radio_id: "0x0000"
 
 esphome:
+  includes:
+    - ceiling_fan_hub.h
   on_boot:
     - priority: 800.0
       then:
         - lambda: |-
-            static auto fan_instance = new esphome::CeilingFanDevice(${radio_id}, id(rf_transmitter));
-            id(global_hub_${room_name}) = fan_instance;
+            auto *hub = new esphome::CeilingFanHub(${radio_id}, id(rf_transmitter));
+            id(hub_${room_name}) = hub;
+            hub->set_fan(id(fan_${room_name}));
+            hub->setup();
 
 globals:
-  - id: global_hub_${room_name}
-    type: void*
+  - id: hub_${room_name}
+    type: esphome::Component*
     initial_value: 'nullptr'
+
+interval:
+  - interval: 50ms
+    then:
+      - lambda: |-
+          if (id(hub_${room_name}) != nullptr) {
+            static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}))->loop();
+          }
+
+output:
+  - platform: template
+    id: dummy_bright_${room_name}
+    type: float
+    write_action:
+      lambda: ""
+  - platform: template
+    id: dummy_temp_${room_name}
+    type: float
+    write_action:
+      lambda: ""
 
 fan:
   - platform: template
-    name: "${room_name} Fan"
-    id: fan_entity_${room_name}
+    name: "${room_friendly_name} Fan"
+    id: fan_${room_name}
     speed_count: 6
+    has_direction: true
     on_speed_set:
       lambda: |-
-        if (id(global_hub_${room_name}) != nullptr) {
-          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
-          int target_speed = id(fan_entity_${room_name}).speed;
-          
-          if (target_speed == 0) {
-            hub->transmit_cmd(esphome::FanCmd::FAN_OFF);
-          } else {
-            esphome::FanCmd speed_cmds[] = {
-              esphome::FanCmd::FAN_SPEED_1, esphome::FanCmd::FAN_SPEED_2, esphome::FanCmd::FAN_SPEED_3, 
-              esphome::FanCmd::FAN_SPEED_4, esphome::FanCmd::FAN_SPEED_5, esphome::FanCmd::FAN_SPEED_6
-            };
-            hub->transmit_cmd(speed_cmds[target_speed - 1]);
-          }
+        auto *hub = static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}));
+        if (hub != nullptr) {
+          hub->control_fan_speed(x);
+        }
+    on_direction_set:
+      lambda: |-
+        auto *hub = static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}));
+        if (hub != nullptr) {
+          hub->control_fan_direction(x);
+        }
+    on_turn_on:
+      lambda: |-
+        auto *hub = static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}));
+        if (hub != nullptr) {
+          hub->control_fan_state(true);
         }
     on_turn_off:
       lambda: |-
-        if (id(global_hub_${room_name}) != nullptr) {
-          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
-          hub->transmit_cmd(esphome::FanCmd::FAN_OFF);
+        auto *hub = static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}));
+        if (hub != nullptr) {
+          hub->control_fan_state(false);
         }
 
-switch:
-  - platform: template
-    name: "${room_name} Light Toggle"
-    id: light_entity_${room_name}
-    turn_on_action:
+light:
+  - platform: color_temperature
+    name: "${room_friendly_name} Light"
+    id: light_${room_name}
+    default_transition_length: 0s
+    color_temperature: dummy_temp_${room_name}
+    brightness: dummy_bright_${room_name}
+    cold_white_color_temperature: 6500 K
+    warm_white_color_temperature: 3000 K
+    on_state:
       lambda: |-
-        if (id(global_hub_${room_name}) != nullptr) {
-          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
-          hub->transmit_cmd(esphome::FanCmd::LIGHT_TOGGLE);
-        }
-    turn_off_action:
-      lambda: |-
-        if (id(global_hub_${room_name}) != nullptr) {
-          auto* hub = (esphome::CeilingFanDevice*)id(global_hub_${room_name});
-          hub->transmit_cmd(esphome::FanCmd::LIGHT_TOGGLE);
+        if (id(hub_${room_name}) != nullptr) {
+          static_cast<esphome::CeilingFanHub*>(id(hub_${room_name}))->control_light(id(light_${room_name}));
         }
