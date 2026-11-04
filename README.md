@@ -40,30 +40,48 @@ To transmit the 433MHz signals, you connect a generic 433MHz RF transmitter modu
 
 ---
 
-## Supported RF Codes
+## Protocol & RF Packet Format
 
-This receiver parses 32-bit payloads consisting of a 16-bit Device ID, a 9-bit Command Code, a 3-bit rolling counter (0-7), and a 4-bit XOR checksum. The 8-bit command values we identified are:
+The remote transmits 32-bit payloads consisting of:
+- **20-bit Device ID** (bits 31 to 12, values `0x00000` to `0xFFFFF`, unique to each fan/remote pair)
+- **5-bit Universal Command Code** (bits 11 to 7, values `0x00` to `0x1F`)
+- **3-bit Rolling Counter** (bits 6 to 4, values `0` to `7`)
+- **4-bit Checksum** (bits 3 to 0, XOR sum of the 7 preceding 4-bit nibbles XORed with `0x0A`)
 
-| Code (Hex) | Action | Description |
-| :--- | :--- | :--- |
-| `0x048` | `LIGHT_TOGGLE` | Toggles the light state |
-| `0x046` | `ALL_OFF` | Power off both light and fan |
-| `0x044` | `FAN_FORWARD` | Fan forward (also powers fan ON) |
-| `0x051` | `FAN_REVERSE` | Fan reverse (also powers fan ON) |
-| `0x050` | `FAN_SPEED_1` | Set speed 1 |
-| `0x052` | `FAN_SPEED_2` | Set speed 2 |
-| `0x05D` | `FAN_SPEED_3` | Set speed 3 |
-| `0x04A` | `FAN_SPEED_4` | Set speed 4 |
-| `0x04E` | `FAN_SPEED_5` | Set speed 5 |
-| `0x04C` | `FAN_SPEED_6` | Set speed 6 |
-| `0x056` | `FAN_OFF` | Turn fan OFF |
-| `0x043` | `LIGHT_INTENSITY_UP` | Increase light brightness |
-| `0x045` | `LIGHT_INTENSITY_DN` | Decrease light brightness |
-| `0x047` | `LIGHT_TEMP_UP` | Increase color temp (cooler) |
-| `0x04B` | `LIGHT_TEMP_DN` | Decrease color temp (warmer) |
-| `0x055` | `BREEZE_MODE` | Toggle breeze mode |
-| `0x049` | `TIMER_2H` | Turn off after 2 hours |
-| `0x058` | `TIMER_4H` | Turn off after 4 hours |
+```
+ 31                     12 11     7 6   4 3        0
++-------------------------+--------+-----+----------+
+|   Device ID (20 bits)   | Opcode | Ctr | Checksum |
+|   (0x00000..0xFFFFF)    |(5 bits)|(3b) | (4 bits) |
++-------------------------+--------+-----+----------+
+```
+
+### Supported Command Opcodes (5-bit)
+
+These opcodes are universal across all fans and remotes of this type:
+
+| Code (Hex) | Dec | Action | Description |
+| :---: | :---: | :--- | :--- |
+| `0x03` | 3 | `LIGHT_INTENSITY_UP` | Increase light brightness |
+| `0x04` | 4 | `FAN_FORWARD` | Fan forward / summer (also powers fan ON) |
+| `0x05` | 5 | `LIGHT_INTENSITY_DN` | Decrease light brightness |
+| `0x06` | 6 | `ALL_OFF` | Power off both light and fan |
+| `0x07` | 7 | `LIGHT_TEMP_UP` | Increase color temp (cooler) |
+| `0x08` | 8 | `LIGHT_TOGGLE` | Toggles the light state |
+| `0x09` | 9 | `TIMER_2H` | Turn off after 2 hours |
+| `0x0A` | 10 | `FAN_SPEED_4` | Set speed 4 |
+| `0x0B` | 11 | `LIGHT_TEMP_DN` | Decrease color temp (warmer) |
+| `0x0C` | 12 | `FAN_SPEED_6` | Set speed 6 (highest) |
+| `0x0D` | 13 | `COLOR_TEMP_CYCLE` | Cycle light color temperature presets |
+| `0x0E` | 14 | `FAN_SPEED_5` | Set speed 5 |
+| `0x10` | 16 | `FAN_SPEED_1` | Set speed 1 (lowest) |
+| `0x11` | 17 | `FAN_REVERSE` | Fan reverse / winter (also powers fan ON) |
+| `0x12` | 18 | `FAN_SPEED_2` | Set speed 2 |
+| `0x14` | 20 | `NIGHT_LIGHT` | Minimum brightness night mode |
+| `0x15` | 21 | `BREEZE_MODE` | Toggle natural breeze mode |
+| `0x16` | 22 | `FAN_OFF` | Turn fan OFF |
+| `0x19` | 25 | `TIMER_4H` | Turn off after 4 hours |
+| `0x1D` | 29 | `FAN_SPEED_3` | Set speed 3 |
 
 ---
 

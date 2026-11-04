@@ -8,30 +8,32 @@
 
 namespace esphome {
 
-enum class FanCmd : uint16_t {
-    LIGHT_TOGGLE       = 0x048, // Reverted back to 0x048
-    ALL_OFF            = 0x046, // Reverted back to 0x046
-    FAN_FORWARD        = 0x044,
-    FAN_REVERSE        = 0x051,
-    FAN_SPEED_1        = 0x050,
-    FAN_SPEED_2        = 0x052,
-    FAN_SPEED_3        = 0x05D,
-    FAN_SPEED_4        = 0x04A,
-    FAN_SPEED_5        = 0x04E,
-    FAN_SPEED_6        = 0x04C,
-    FAN_OFF            = 0x056,
-    LIGHT_INTENSITY_UP = 0x043,
-    LIGHT_INTENSITY_DN = 0x045,
-    LIGHT_TEMP_UP      = 0x047,
-    LIGHT_TEMP_DN      = 0x04B,
-    BREEZE_MODE        = 0x055,
-    TIMER_2H           = 0x049,
-    TIMER_4H           = 0x058
+enum class FanCmd : uint8_t {
+    LIGHT_INTENSITY_UP = 0x03,
+    FAN_FORWARD        = 0x04,
+    LIGHT_INTENSITY_DN = 0x05,
+    ALL_OFF            = 0x06,
+    LIGHT_TEMP_UP      = 0x07, // Cooler
+    LIGHT_TOGGLE       = 0x08,
+    TIMER_2H           = 0x09,
+    FAN_SPEED_4        = 0x0A,
+    LIGHT_TEMP_DN      = 0x0B, // Warmer
+    FAN_SPEED_6        = 0x0C,
+    COLOR_TEMP_CYCLE   = 0x0D,
+    FAN_SPEED_5        = 0x0E,
+    FAN_SPEED_1        = 0x10,
+    FAN_REVERSE        = 0x11,
+    FAN_SPEED_2        = 0x12,
+    NIGHT_LIGHT        = 0x14,
+    BREEZE_MODE        = 0x15,
+    FAN_OFF            = 0x16,
+    TIMER_4H           = 0x19, // or 0x18
+    FAN_SPEED_3        = 0x1D
 };
 
 class CeilingFanHub : public Component {
  private:
-  uint16_t device_id_;
+  uint32_t device_id_;
   remote_transmitter::RemoteTransmitterComponent *transmitter_;
   uint8_t counter_{0};
   
@@ -51,7 +53,7 @@ class CeilingFanHub : public Component {
   fan::FanDirection assumed_fan_direction_{fan::FanDirection::FORWARD};
 
  public:
-  CeilingFanHub(uint16_t device_id, remote_transmitter::RemoteTransmitterComponent *transmitter)
+  CeilingFanHub(uint32_t device_id, remote_transmitter::RemoteTransmitterComponent *transmitter)
       : device_id_(device_id), transmitter_(transmitter) {}
 
   void set_fan(fan::Fan *fan) { this->fan_ = fan; }
@@ -252,10 +254,11 @@ class CeilingFanHub : public Component {
   }
 
   void transmit_cmd(FanCmd cmd) {
-    uint16_t op = static_cast<uint16_t>(cmd);
+    uint8_t op = static_cast<uint8_t>(cmd);
     
-    uint32_t packet_data = ((uint32_t)this->device_id_ << 12) | 
-                           ((uint32_t)op << 3)         | 
+    // 20-bit Device ID (bits [27:8]), 5-bit Opcode (bits [7:3]), 3-bit Counter (bits [2:0])
+    uint32_t packet_data = ((this->device_id_ & 0x000FFFFF) << 8) | 
+                           (((uint32_t)(op & 0x1F)) << 3)         | 
                            (this->counter_ & 0x07);
     
     uint8_t xor_sum = 0;
@@ -264,10 +267,11 @@ class CeilingFanHub : public Component {
         xor_sum ^= nibble;
     }
     
-    uint8_t chk = xor_sum ^ 0x0A;
-    uint32_t final_payload = (packet_data << 4) | (chk & 0x0F);
+    uint8_t chk = (xor_sum ^ 0x0A) & 0x0F;
+    uint32_t final_payload = (packet_data << 4) | chk;
     
-    ESP_LOGD("custom_fan", "Transmitting Hex: 0x%08X (Counter: %d, Command: 0x%03X)", final_payload, this->counter_, op);
+    ESP_LOGD("custom_fan", "Transmitting Hex: 0x%08X (Device: 0x%05X, Counter: %d, Command: 0x%02X)", 
+             final_payload, this->device_id_, this->counter_, op);
     this->counter_ = (this->counter_ + 1) & 0x07;
 
     remote_base::RCSwitchBase custom_proto(0, 0, 283, 849, 849, 283, false);

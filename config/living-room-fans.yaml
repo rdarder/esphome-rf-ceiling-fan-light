@@ -36,11 +36,11 @@ packages:
     vars:
       room_name: "living_room"
       room_friendly_name: "Living Room"
-      radio_id: "0xC6C9"
+      radio_id: "0x36A72"
   comedor_fan:
     !include
     file: ceiling_fan_blueprint.yaml
     vars:
-      room_name: "bedroom"
-      room_friendly_name: "Bedroom"
-      radio_id: "0x36A7"
+      room_name: "comedor"
+      room_friendly_name: "Comedor"
+      radio_id: "0xC6C92"
